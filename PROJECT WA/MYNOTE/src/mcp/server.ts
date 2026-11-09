@@ -1,0 +1,20 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+import { loadConfig } from '../config/index.js';
+import { PostgresRepository } from '../persistence/postgres.js';
+import { MyNoteServices } from '../application/services.js';
+
+const config = loadConfig();
+const repository = new PostgresRepository({ ...config.postgres, connectionTimeoutMillis: 10000 });
+await repository.initialize();
+const services = new MyNoteServices(repository, config);
+const server = new McpServer({ name: 'mynote', version: '0.1.0' });
+const json = (value: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(value) }] });
+server.tool('mynote_list_groups', {}, async () => json(await services.repository.listGroups()));
+server.tool('mynote_validate_message', { text: z.string().max(10000) }, async ({ text }) => json(services.validateMessage(text)));
+server.tool('mynote_list_records', { from: z.string().optional(), to: z.string().optional(), type: z.enum(['pemasukan', 'pengeluaran']).optional(), category: z.string().max(100).optional(), groupId: z.string().max(200).optional(), limit: z.number().int().min(1).max(500).optional() }, async (filters) => json(await services.listRecords(filters)));
+server.tool('mynote_get_summary', { from: z.string(), to: z.string(), groupId: z.string().max(200).optional() }, async ({ from, to, groupId }) => json(await services.summary(from, to, groupId)));
+server.tool('mynote_generate_report', { format: z.enum(['pdf', 'xlsx']), from: z.string(), to: z.string(), groupId: z.string().max(200).optional(), includeRawMessage: z.boolean().default(false) }, async ({ format, from, to, groupId }) => json(await services.generateReport(format, from, to, groupId)));
+server.tool('mynote_health_check', {}, async () => json(await services.health()));
+await server.connect(new StdioServerTransport());

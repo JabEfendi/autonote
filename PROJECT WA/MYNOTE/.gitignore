@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+auth/
+reports/*
+!reports/.gitkeep
+*.log
+.venv/
+__pycache__/
+*.pyc

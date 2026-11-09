@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS daily_cash_transactions_source_message_idx;
+CREATE UNIQUE INDEX IF NOT EXISTS daily_cash_transactions_source_message_uniq_idx ON daily_cash_transactions(source_message_id);
